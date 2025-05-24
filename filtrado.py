@@ -9,8 +9,8 @@ def filtrar_csv_por_columna(ruta_entrada="Test/mpd2024_csv", ruta_salida="Test/m
     archivos_csv = sorted(ruta_entrada.glob("*.csv"))
 
     for archivo in archivos_csv:
-        print(f"Filtrando: {archivo.name}")
-        
+        print(f"Filtrando: {archivo.name}");
+        print ("hola chicos");
         # Leer el CSV sin encabezado, ya que no lo tiene
         df = pd.read_csv(archivo, sep=";", header=None, decimal=",")
 
