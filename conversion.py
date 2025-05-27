@@ -2,12 +2,15 @@
 import pandas as pd
 from pathlib import Path
 
-def convertir_mpd_a_csv(ruta_mpd="Test/mpd2024", ruta_salida="Test/mpd2024_csv", filas_saltadas=29): # MODIFICAR SEGUN CORRESPONDA
+def convertir_mpd_a_csv(ruta_mpd="INDICE_DE_MASA/raw",     
+                        ruta_salida="INDICE_DE_MASA/csv/conversion",
+                        filas_saltadas=29): 
     ruta_mpd = Path(ruta_mpd) # Ruta a los .mpd
-    ruta_csv = Path(ruta_salida) # Ruta donde guardar los .csv (puede ser la misma o distinta)
+    ruta_csv = Path(ruta_salida) # Ruta donde guardar los .csv 
     ruta_csv.mkdir(exist_ok=True) # Crea la carpeta si no existe
-
-    archivos_mpd = sorted(ruta_mpd.glob("mp*.riogrande.mpd"))  # Buscar todos los archivos .mpd
+    
+    # Buscar todos los archivos .mpd
+    archivos_mpd = sorted(ruta_mpd.glob("mp*.riogrande.mpd"))  
     colspecs = [
     (0, 11),     # Date (YYYY/MM/DD)
     (12, 24),    # Time (hh:mm:ss.sss)
