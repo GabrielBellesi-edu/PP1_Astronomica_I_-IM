@@ -2,16 +2,16 @@
 import pandas as pd
 from pathlib import Path
 
-def consolidar_csv(ruta_csv="Test/mpd2024_csv", salida="Test/datos_consolidados_2024.csv"): # Rutas predeterminadas
+def consolidar_csv(ruta_csv="INDICE_DE_MASA/csv/transformado", salida="INDICE_DE_MASA/csv/IM2024_consolidado.csv"): # Rutas predeterminadas
     ruta_csv = Path(ruta_csv)
     # Buscar todos los archivos con extensión .csv dentro de esa carpeta
     archivos_csv = sorted(ruta_csv.glob("*.csv"))
 
     # Lista de nombres de columnas, ya que los archivos CSV no tienen encabezado
     columnas = [
-        "Date", "Time", "File", "Rge", "Ht", "Vrad", "delVr",
-        "Theta", "Phi0", "Ambig", "Delphase", "ant-pair", "IREX",
-        "amax", "Tau", "vmet", "snrdb"
+        "Date", "Time", "Rge", "Ht", "Vrad", "delVr",
+        "Theta", "Phi0", "Delphase", "ant-pair",
+        "amax", "Tau", "vmet", "snrdb", "amaxT"
     ]
     
     # Lista vacía para acumular los DataFrames de cada archivo
@@ -25,9 +25,6 @@ def consolidar_csv(ruta_csv="Test/mpd2024_csv", salida="Test/datos_consolidados_
         # Leer el archivo sin encabezado, asigna los nombres de columnas definidas arriba y usando ; como separador y , como decimal
         df = pd.read_csv(archivo, header=None, names=columnas, sep=";", decimal=",")
         
-        # Añadir columna con el nombre del archivo de origen (Para conocer su origen)
-        df["archivo"] = archivo.stem
-
         # Agregar el DataFrame a la lista
         dataframes.append(df)
 
@@ -41,3 +38,4 @@ def consolidar_csv(ruta_csv="Test/mpd2024_csv", salida="Test/datos_consolidados_
     print("✅ Consolidación completada sin errores de columnas.")
 
 consolidar_csv() # MODIFICAR PARAMETROS SEGUN CORRESPONDA
+
