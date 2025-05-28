@@ -1,4 +1,5 @@
 # conversion-v4.py
+#un archivo .mpd se convierte en un archivo .csv
 import pandas as pd
 from pathlib import Path
 
