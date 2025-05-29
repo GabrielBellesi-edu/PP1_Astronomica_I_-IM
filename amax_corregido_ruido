@@ -1,0 +1,448 @@
+# ==============================================================================
+# PARTE 1: IMPORTACIONES NECESARIAS PARA TODO EL SCRIPT
+# ==============================================================================
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+
+from scipy import stats
+import re 
+
+print("✅ Librerías principales importadas.")
+
+# ==============================================================================
+# PARTE 2: DEFINICIONES DE FUNCIONES (RECONSTRUIDAS)
+# ==============================================================================
+
+def create_bins(amplitudes_input, num_bins=50):
+    """
+    Crea bins logarítmicamente espaciados para reducir ruido.
+    """
+    print("Creando bins...")
+   
+    amplitudes = np.array(amplitudes_input)
+    
+    if len(amplitudes) == 0:
+        print(" No hay amplitudes para binnear.")
+        return pd.DataFrame(columns=['A', 'N', 'log_A', 'log_N'])
+
+    min_amp = np.min(amplitudes)
+    max_amp = np.max(amplitudes)
+
+    if min_amp <= 0 or max_amp <= 0 or min_amp == max_amp:
+        print("Amplitudes no válidas para binning logarítmico (<=0 o rango nulo). Devolviendo DataFrame vacío.")
+        return pd.DataFrame(columns=['A', 'N', 'log_A', 'log_N'])
+        
+    log_bins = np.linspace(np.log10(min_amp), np.log10(max_amp), num_bins + 1)
+    bins = 10**log_bins
+    
+    bin_data = []
+    for i in range(len(bins) - 1):
+        bin_min_edge = bins[i]
+        bin_max_edge = bins[i+1]
+        
+        # Seleccionar amplitudes dentro del bin actual
+        # Para el último bin, incluir el borde máximo
+        if i == len(bins) - 2:
+            mask = (amplitudes >= bin_min_edge) & (amplitudes <= bin_max_edge)
+        else:
+            mask = (amplitudes >= bin_min_edge) & (amplitudes < bin_max_edge)
+        
+        count_in_bin = np.sum(mask)
+        
+        if count_in_bin > 0:
+            # Usar media geométrica del bin como representativo si hay datos
+            bin_center_A = np.sqrt(bin_min_edge * bin_max_edge) 
+            bin_data.append({
+                'A_binned_center': bin_center_A,
+                'N_count_in_bin': count_in_bin,
+            })
+            
+    df_bins = pd.DataFrame(bin_data)
+    
+    if len(df_bins) == 0:
+        print("No se generaron bins con datos.")
+        return pd.DataFrame(columns=['A', 'N', 'log_A', 'log_N'])
+
+    # Ordenar por A_binned_center de mayor a menor para el conteo acumulado N
+    df_bins = df_bins.sort_values('A_binned_center', ascending=False).reset_index(drop=True)
+    
+    # Calcular N acumulado
+    df_bins['N_cumulative_binned'] = df_bins['N_count_in_bin'].cumsum()
+    
+    # Renombrar columnas y calcular logs para la regresión
+    df_bins.rename(columns={'A_binned_center': 'A', 'N_cumulative_binned': 'N'}, inplace=True)
+    df_bins['log_A'] = np.log10(df_bins['A'])
+    df_bins['log_N'] = np.log10(df_bins['N'])
+    
+    print(f"Binning completado, {len(df_bins)} bins con datos generados.")
+    return df_bins[['A', 'N', 'log_A', 'log_N']]
+
+
+def calculate_mass_index(amplitudes_input):
+    """
+    Calcula el índice de masa a partir de valores de amplitud.
+    """
+    print("Iniciando cálculo...")
+    amplitudes = np.array([float(a) for a in amplitudes_input if isinstance(a, (int, float)) and float(a) > 0])
+    
+    if len(amplitudes) < 10: # Necesitamos suficientes puntos para la regresión
+        print("No hay suficientes valores válidos de amplitud (>0) para un análisis confiable.")
+        # Devolver un diccionario con NaNs o valores indicativos de error
+        return {
+            'df_full': pd.DataFrame(), 'df_binned': pd.DataFrame(), 'mass_index': np.nan,
+            'slope': np.nan, 'intercept': np.nan, 'r_squared': np.nan, 'p_value': np.nan,
+            'std_err': np.nan, 'total_detections': len(amplitudes),
+            'min_amplitude': np.nan if len(amplitudes)==0 else np.min(amplitudes),
+            'max_amplitude': np.nan if len(amplitudes)==0 else np.max(amplitudes),
+            'mean_amplitude': np.nan if len(amplitudes)==0 else np.mean(amplitudes),
+            'std_amplitude': np.nan if len(amplitudes)==0 else np.std(amplitudes)
+        }
+        
+    amplitudes_sorted = np.sort(amplitudes)[::-1] # Ordenar de mayor a menor
+    N_cumulative = np.arange(1, len(amplitudes_sorted) + 1) # Conteo acumulado
+    
+    df_full = pd.DataFrame({
+        'A': amplitudes_sorted,
+        'N': N_cumulative,
+        'log_A': np.log10(amplitudes_sorted),
+        'log_N': np.log10(N_cumulative)
+    })
+    
+    # Crear bins para reducir ruido en la regresión, usando la función create_bins
+    df_binned = create_bins(amplitudes_sorted, num_bins=50)
+    
+    if len(df_binned) < 2: # Necesitamos al menos 2 puntos para la regresión
+         print("No hay suficientes bins con datos para la regresión.")
+         # Devolver resultados parciales o con NaNs
+         return {
+            'df_full': df_full, 'df_binned': df_binned, 'mass_index': np.nan,
+            'slope': np.nan, 'intercept': np.nan, 'r_squared': np.nan, 'p_value': np.nan,
+            'std_err': np.nan, 'total_detections': len(amplitudes),
+            'min_amplitude': np.min(amplitudes), 'max_amplitude': np.max(amplitudes),
+            'mean_amplitude': np.mean(amplitudes), 'std_amplitude': np.std(amplitudes)
+        }
+
+    # Realizar regresión lineal en escala logarítmica con datos binneados
+    slope, intercept, r_value, p_value, std_err = stats.linregress(
+        df_binned['log_A'], df_binned['log_N']
+    )
+    
+    mass_index = 1 - slope # Calcular índice de masa: s = 1 - slope
+    r_squared = r_value**2
+    
+    print(f" Cálculo completado. Índice de masa s = {mass_index:.4f}")
+    return {
+        'df_full': df_full, 'df_binned': df_binned, 'mass_index': mass_index,
+        'slope': slope, 'intercept': intercept, 'r_squared': r_squared, 'p_value': p_value,
+        'std_err': std_err, 'total_detections': len(amplitudes),
+        'min_amplitude': np.min(amplitudes), 'max_amplitude': np.max(amplitudes),
+        'mean_amplitude': np.mean(amplitudes), 'std_amplitude': np.std(amplitudes)
+    }
+
+def plot_results(results):
+    """
+    Crear gráficos de los resultados (Matplotlib).
+    """
+    print(" Generando gráficos estáticos (Matplotlib)...")
+    if results['df_binned'].empty or pd.isna(results['slope']):
+        print(" No hay datos suficientes en df_binned o falta la pendiente para graficar.")
+        return
+
+    df_binned = results['df_binned']
+    slope = results['slope']
+    intercept = results['intercept']
+    
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
+    fig.suptitle(f'Resultados del Análisis de Índice de Masa (s = {results["mass_index"]:.4f})', fontsize=16)
+
+    # 1. Distribución log(N) vs log(A)
+    ax1.scatter(df_binned['log_A'], df_binned['log_N'], alpha=0.7, color='blue', s=30, label='Datos binneados')
+    if not (pd.isna(slope) or pd.isna(intercept)):
+        x_fit = np.array([df_binned['log_A'].min(), df_binned['log_A'].max()])
+        y_fit = slope * x_fit + intercept
+        ax1.plot(x_fit, y_fit, 'r-', linewidth=2, label=f'Ajuste: y = {slope:.4f}x + {intercept:.4f}')
+    ax1.set_xlabel('log(Amplitud)')
+    ax1.set_ylabel('log(N acumulado)')
+    ax1.set_title('Distribución log(N) vs log(A)')
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+    
+    # 2. Histograma de amplitudes (del df_full)
+    if not results['df_full'].empty and 'A' in results['df_full'].columns:
+      ax2.hist(np.log10(results['df_full']['A']), bins=50, alpha=0.7, color='green')
+    ax2.set_xlabel('log(Amplitud)')
+    ax2.set_ylabel('Frecuencia')
+    ax2.set_title('Distribución de log(Amplitudes)')
+    ax2.grid(True, alpha=0.3)
+    
+    # 3. N vs A en escala normal (de df_binned)
+    ax3.scatter(df_binned['A'], df_binned['N'], alpha=0.7, color='purple', s=30)
+    ax3.set_xlabel('Amplitud (A)')
+    ax3.set_ylabel('Número acumulado (N)')
+    ax3.set_title('N vs A (Escala lineal')
+    ax3.grid(True, alpha=0.3)
+    
+    # 4. Residuos del ajuste (de df_binned)
+    if not (pd.isna(slope) or pd.isna(intercept)):
+        y_pred = slope * df_binned['log_A'] + intercept
+        residuals = df_binned['log_N'] - y_pred
+        ax4.scatter(df_binned['log_A'], residuals, alpha=0.7, color='orange', s=30)
+        ax4.axhline(y=0, color='red', linestyle='--', alpha=0.7)
+    ax4.set_xlabel('log(Amplitud)')
+    ax4.set_ylabel('Residuos (log(N) obs - log(N) pred)')
+    ax4.set_title('Residuos del Ajuste Lineal')
+    ax4.grid(True, alpha=0.3)
+    
+    plt.tight_layout(rect=[0, 0, 1, 0.96]) # Ajustar para el suptitle
+    plt.show()
+
+def plot_interactive(results):
+    """
+    Crear gráfico interactivo con Plotly.
+    """
+    print("Generando gráfico interactivo (Plotly)...")
+    if results['df_binned'].empty or pd.isna(results['slope']):
+        print("No hay datos suficientes en df_binned o falta la pendiente para graficar.")
+        return
+
+    df_binned = results['df_binned']
+    slope = results['slope']
+    intercept = results['intercept']
+        
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=df_binned['log_A'], y=df_binned['log_N'], mode='markers', name='Datos binneados',
+        marker=dict(color='blue', size=8),
+        customdata=np.column_stack((df_binned['A'], df_binned['N'])),
+        hovertemplate='log(A): %{x:.3f}<br>log(N): %{y:.3f}<br>A: %{customdata[0]:.3f}<br>N: %{customdata[1]}<extra></extra>'
+    ))
+    
+    if not (pd.isna(slope) or pd.isna(intercept)):
+        x_fit_plotly = np.array([df_binned['log_A'].min(), df_binned['log_A'].max()])
+        y_fit_plotly = slope * x_fit_plotly + intercept
+        fig.add_trace(go.Scatter(
+            x=x_fit_plotly, y=y_fit_plotly, mode='lines',
+            name=f'Ajuste: y = {slope:.4f}x + {intercept:.4f}',
+            line=dict(color='red', width=3)
+        ))
+    
+    fig.update_layout(
+        title=f'Distribución log(N) vs log(A) Interactiva - Índice de masa s = {results["mass_index"]:.4f}',
+        xaxis_title='log(Amplitud)', yaxis_title='log(N acumulado)',
+        hovermode='closest', showlegend=True, width=800, height=600
+    )
+    fig.show()
+
+def interpret_mass_index(s):
+    """
+    Interpretar el valor del índice de masa.
+    """
+    if pd.isna(s):
+        return "Índice de masa no pudo ser calculado."
+    if s < 1.5: return "🔹 Población dominada por meteoritos pequeños (s < 1.5)"
+    elif s < 2.0: return "🔸 Distribución intermedia (1.5 <= s < 2.0)"
+    else: return "🔶 Mayor proporción de meteoritos grandes (s >= 2.0)"
+
+def print_results(results): # Sexto Código
+    """
+    Imprimir resultados formateados del análisis del Sexto Código.
+    """
+    print("\n" + "="*60)
+    print("📊 RESULTADOS DEL ANÁLISIS DE ÍNDICE DE MASA")
+    print("="*60)
+    
+    if pd.isna(results['mass_index']):
+        print("❌ El cálculo del índice de masa falló o no hubo suficientes datos.")
+        print(f"   Total detecciones válidas procesadas: {results.get('total_detections', 'N/A')}")
+        print("="*60)
+        return
+
+    print(f"\n🎯 ÍNDICE DE MASA (s): {results['mass_index']:.4f}")
+    print(f"📈 COEFICIENTE DE DETERMINACIÓN (R²): {results['r_squared']:.4f}")
+    
+    correlation_quality = "Excelente" if results['r_squared'] > 0.95 else \
+                          "Bueno" if results['r_squared'] > 0.90 else \
+                          "Moderado" if results['r_squared'] > 0.80 else "Bajo"
+    print(f"✅ CALIDAD DEL AJUSTE: {correlation_quality} (basado en R²)")
+    
+    print(f"\n📐 ECUACIÓN DE AJUSTE (log-log sobre datos binneados):")
+    print(f"   log(N) = {results['slope']:.4f} × log(A) + {results['intercept']:.4f}")
+    print(f"   P-value del ajuste: {results['p_value']:.2e}")
+    print(f"   Error estándar de la pendiente: {results['std_err']:.4f}")
+    
+    print(f"\n📊 ESTADÍSTICAS DE DATOS DE AMPLITUD (usados en el cálculo):")
+    print(f"   Total detecciones válidas: {results['total_detections']:,}")
+    print(f"   Amplitud mínima: {results['min_amplitude']:.4f}")
+    print(f"   Amplitud máxima: {results['max_amplitude']:.4f}")
+    print(f"   Amplitud promedio: {results['mean_amplitude']:.4f}")
+    print(f"   Desviación estándar de amplitud: {results['std_amplitude']:.4f}")
+    
+    print(f"\n🔍 INTERPRETACIÓN DEL ÍNDICE DE MASA:")
+    print(f"   {interpret_mass_index(results['mass_index'])}")
+    
+    print(f"\n📚 GUÍA DE INTERPRETACIÓN GENERAL:")
+    print(f"   • s ≈ 1.0-1.5: Población dominada por meteoritos pequeños")
+    print(f"   • s ≈ 1.5-2.0: Distribución intermedia")  
+    print(f"   • s > 2.0: Mayor proporción de meteoritos grandes")
+    print("="*60)
+
+def analyze_meteorite_data(file_path=None, data=None): 
+    """
+    Función principal para analizar datos de meteoritos.
+    Si 'data' es provisto, 'file_path' es ignorado.
+    """
+    print("\n Iniciando análisis...")
+    amplitudes_list = []
+    
+    if data is not None:
+        print(" Usando datos provistos directamente.")
+        amplitudes_list = list(data) # Asegurar que sea una lista
+    elif file_path is not None:
+        print(f"[Sexto Código - analyze_meteorite_data] Leyendo datos desde archivo: {file_path}")
+        try:
+            with open(file_path, 'r') as f:
+                content = f.read()
+            # Parsear valores usando expresiones regulares
+            values_str = re.split(r'[\s,;]+', content.strip())
+            amplitudes_list = [float(v) for v in values_str if v and v.replace('.', '', 1).replace('-', '', 1).isdigit()]
+            print(f" Archivo cargado: {len(amplitudes_list):,} valores numéricos extraídos.")
+        except Exception as e:
+            print(f"❌  Error al leer archivo '{file_path}': {e}")
+            return None # O un diccionario de error
+    else:
+        print("❌ Debe proporcionar 'file_path' o 'data'.")
+        return None
+
+    if not amplitudes_list:
+        print("❌ No hay amplitudes para analizar.")
+        return None
+        
+    print(f" Total amplitudes recibidas: {len(amplitudes_list)}")
+    
+    try:
+        results_dict = calculate_mass_index(amplitudes_list)
+        
+        if results_dict and not pd.isna(results_dict.get('mass_index')):
+            print_results(results_dict) # Mostrar resultados numéricos
+            print("\n Generando visualizaciones...")
+            plot_results(results_dict)    # Mostrar gráficos Matplotlib
+            plot_interactive(results_dict) # Mostrar gráfico Plotly
+        else:
+            print("❌ El cálculo del índice de masa no produjo resultados válidos. No se generarán gráficos.")
+            # Aún así, imprimir lo que se tenga de results_dict para depuración
+            if results_dict:
+                print_results(results_dict) 
+            else:
+                print("   No se generó diccionario de resultados.")
+
+        return results_dict
+        
+    except ValueError as ve: # Capturar el ValueError de calculate_mass_index si no hay amplitudes válidas
+        print(f"❌  Error de valor durante el cálculo: {ve}")
+        return None
+    except Exception as e:
+        print(f"❌ Ocurrió un error inesperado en el análisis: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+print("✅ Todas las funciones están definidas.")
+
+# ==============================================================================
+# PARTE 3: CÓDIGO DE PREPARACIÓN DE DATOS (para "amax_corregido")
+# ==============================================================================
+
+#Definimos la ruta completa a tu archivo CSV
+ruta_archivo_csv_usuario = r"C:\Users\Usuario\Desktop\TECNICATURA EN CIENCIA DE DATOS E IA\PRIMER AÑO\SEGUNDO CUATRIMESTRE\PRACTICAS PROFESIONALIZANTES\IM2024_consolidado.csv"
+
+if ruta_archivo_csv_usuario == r"C:\Users\Usuario\Desktop\TECNICATURA EN CIENCIA DE DATOS E IA\PRIMER AÑO\SEGUNDO CUATRIMESTRE\PRACTICAS PROFESIONALIZANTES\IM2024_consolidado.csv":
+    print("\n⚠️ ATENCIÓN: Usando ruta de archivo de demostración. ¡Debes cambiar 'ruta_archivo_csv_usuario' a tu ruta real!")
+   
+    ruta_a_usar = r"C:\Users\Usuario\Desktop\TECNICATURA EN CIENCIA DE DATOS E IA\PRIMER AÑO\SEGUNDO CUATRIMESTRE\PRACTICAS PROFESIONALIZANTES\IM2024_consolidado.csv"
+else:
+    ruta_a_usar = ruta_archivo_csv_usuario
+
+print(f"\nUsando la ruta de archivo: {ruta_a_usar}\n")
+
+amplitudes_para_analisis = [] # Inicializar para el caso de que falle la carga/procesamiento
+
+try:
+    #Lee el archivo CSV. Asumimos separador ';' y decimal ','
+    df_consolidado = pd.read_csv(ruta_a_usar, sep=";", decimal=",")
+    print(f"✅ Archivo CSV '{ruta_a_usar}' cargado correctamente.")
+    print(f"   Columnas originales disponibles: {df_consolidado.columns.tolist()}") 
+
+    # Asegurarse de que las columnas 'amax' y 'snrdb' existen
+    if 'amax' in df_consolidado.columns and 'snrdb' in df_consolidado.columns:
+        print("\n🔎 Preparando columnas 'amax' y 'snrdb' para el cálculo de 'amax_corregido'...")
+        
+        df_consolidado['amax_numeric'] = pd.to_numeric(df_consolidado['amax'], errors='coerce')
+        df_consolidado['snrdb_numeric'] = pd.to_numeric(df_consolidado['snrdb'], errors='coerce')
+        
+        if not pd.api.types.is_numeric_dtype(df_consolidado['snrdb_numeric']):
+             print(f"❌ ADVERTENCIA: 'snrdb_numeric' no es de tipo numérico después de la conversión (dtype: {df_consolidado['snrdb_numeric'].dtype}). Los cálculos podrían fallar.")
+        
+        print(f"   Columna 'snrdb_numeric' lista para cálculos (dtype: {df_consolidado['snrdb_numeric'].dtype}).")
+        
+        # Calcular las nuevas columnas según tus fórmulas
+        print("\n   Calculando 'S/R', 'error' y 'amax_corregido'...")
+
+        df_consolidado['S_R'] = 10**(df_consolidado['snrdb_numeric'] / 10)
+        print(f"     Columna 'S_R' calculada. Ejemplo (primeros 5): {df_consolidado['S_R'].head().tolist()}") # Descomentar para depurar
+
+        with np.errstate(divide='ignore', invalid='ignore'):
+            df_consolidado['error_calculado'] = df_consolidado['amax_numeric'] / df_consolidado['S_R']
+        df_consolidado.replace([np.inf, -np.inf], np.nan, inplace=True)
+        print(f"     Columna 'error_calculado' calculada. Ejemplo (primeros 5): {df_consolidado['error_calculado'].head().tolist()}") # Descomentar para depurar
+
+        df_consolidado['amax_corregido'] = df_consolidado['amax_numeric'] - df_consolidado['error_calculado']
+        print(f"     Columna 'amax_corregido' calculada. Ejemplo (primeros 5): {df_consolidado['amax_corregido'].head().tolist()}") # Descomentar para depurar
+        
+        amplitudes_corregidas_validas = df_consolidado["amax_corregido"].dropna()
+        amplitudes_para_analisis = amplitudes_corregidas_validas[amplitudes_corregidas_validas > 0].astype(float).tolist()
+        
+        print(f"\n   Valores de 'amax_corregido' calculados originalmente: {len(df_consolidado['amax_corregido'])}.")
+        print(f"   Valores después de quitar NaNs: {len(amplitudes_corregidas_validas)}.")
+        print(f"   Valores finales para análisis (>0): {len(amplitudes_para_analisis)} amplitudes.")
+    else:
+        missing_cols = []
+        if 'amax' not in df_consolidado.columns: missing_cols.append('amax')
+        if 'snrdb' not in df_consolidado.columns: missing_cols.append('snrdb')
+        print(f"❌ Error: Las columnas necesarias ({', '.join(missing_cols)}) para el cálculo de 'amax_corregido' no se encontraron en el archivo.")
+
+except FileNotFoundError:
+    print(f"❌ Error: No se encontró el archivo CSV en la ruta: {ruta_a_usar}")
+    print("   Por favor, verifica que la ruta y el nombre del archivo sean correctos.")
+except Exception as e:
+    print(f"❌ Ocurrió un error general durante la preparación de datos: {e}")
+    import traceback
+    traceback.print_exc()
+
+# ==============================================================================
+# PARTE 4: LLAMADA A LA FUNCIÓN DE ANÁLISIS
+#          CON LOS DATOS PREPARADOS ("amax_corregido")
+# ==============================================================================
+if amplitudes_para_analisis: # Solo si la lista tiene datos y no está vacía
+    if 'analyze_meteorite_data' in locals() and callable(analyze_meteorite_data):
+        print('\n🚀 Iniciando análisis usando los valores de \'amax_corregido\' como amplitudes...')
+        resultados_finales = analyze_meteorite_data(file_path=None, data=amplitudes_para_analisis)
+        
+        if resultados_finales:
+            print("\n🎉 ¡Análisis completo del Sexto Código con 'amax_corregido' finalizado!")
+            # Los resultados numéricos y los gráficos ya se habrán mostrado
+            # por las funciones print_results, plot_results, plot_interactive
+            # llamadas DENTRO de analyze_meteorite_data.
+        else:
+            print("❌ El análisis (función analyze_meteorite_data) no produjo un diccionario de resultados o falló.")
+    else:
+        print("❌ ERROR CRÍTICO: La función 'analyze_meteorite_data' no está definida o no es llamable.")
+        print("   Asegúrate de haber copiado todas las definiciones de funciones de la PARTE 2 de este script.")
+elif not 'df_consolidado' in locals() or df_consolidado.empty: # Si el DataFrame no se cargó o está vacío
+    print("\n❌ No se cargaron datos del CSV, por lo que no se puede ejecutar el análisis ")
+else: # Si amplitudes_para_analisis está vacía pero df_consolidado se cargó
+    print("\n❌ La lista 'amplitudes_para_analisis' (basada en 'amax_corregido') está vacía o no contiene valores válidos (>0).")
+    print("   No se ejecutará el análisis. Revisa los cálculos y datos de entrada.")
+
+print("\n--- Fin del script ---")
