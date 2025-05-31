@@ -68,7 +68,7 @@ Repositorio del proyecto Astronomica I (IM), de la materia Practica Profesionali
 │
 ├── models             <- EMPTY / Trained and serialized models, model predictions, or model summaries
 │
-├── notebooks          <- EMPTY / Jupyter notebooks. Naming convention is a number (for ordering),
+├── notebooks          <- CHECK / Jupyter notebooks. Naming convention is a number (for ordering),
 │                         the creator's initials, and a short `-` delimited description, e.g.
 │                         `1.0-jqp-initial-data-exploration`.
 │
