@@ -11,3 +11,7 @@ __pycache__/
 # Archivos de configuración personal
 *.code-workspace
 *.vscode/
+
+reports/2024_consolidado_IM_temporalidades.csv
+
+data/processed/2024_consolidado_extra_rge_superior.csv

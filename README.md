@@ -103,5 +103,8 @@ Repositorio del proyecto Astronomica I (IM), de la materia Practica Profesionali
     └── plots.py                <- TO DO / Code to create visualizations
 ```
 
+pip install --user git-filter-repo
+
+
 --------
 
