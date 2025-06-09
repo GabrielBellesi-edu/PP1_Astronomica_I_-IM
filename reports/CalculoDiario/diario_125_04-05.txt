@@ -1,0 +1,28 @@
+ANÁLISIS DE ÍNDICE DE MASA DE METEORITOS
+==================================================
+Fecha de análisis: 2025-06-08 16:29:23
+Período analizado: diario - 125_04/05
+
+RESULTADOS PRINCIPALES:
+-------------------------
+Índice de masa (s):           2.181497
+Pendiente de regresión:       -1.1815
+Intercepto:                   6.9745
+Coeficiente de correlación:   -0.9579
+R² (bondad de ajuste):        0.9175
+P-value:                      0.00e+00
+Error estándar:               0.0066
+
+ESTADÍSTICAS DE DATOS:
+----------------------
+Número de datos originales:   2925
+Puntos usados en regresión:   2925
+Amplitud mínima:              484.00
+Amplitud máxima:              35974.00
+Amplitud promedio:            3150.03
+Binning aplicado:             No
+
+INTERPRETACIÓN:
+---------------
+✓ Excelente ajuste de la regresión
+✓ Índice de masa calculado: s = 2.1815
