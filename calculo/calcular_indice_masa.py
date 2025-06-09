@@ -460,17 +460,8 @@ class MeteoriteMassAnalyzer:
         ax1.set_title(f'Regresión Log-Log (R² = {results["r_squared"]:.4f})')
         ax1.legend()
         ax1.grid(True, alpha=0.3)
-        
-        # 2. Distribución de residuos (1x2 = 1 columna, 2 filas)
-        ax2 = fig.add_subplot(gs[0:2, 3])
-        predicted = results['slope'] * log_A + results['intercept']
-        residuals = log_N - predicted
-        ax2.boxplot(residuals, vert=True)
-        ax2.set_ylabel('Residuos')
-        ax2.set_title('Distribución de Residuos')
-        ax2.grid(True, alpha=0.3)
-        
-        # 3. Distribución de amplitudes (2x1 = 2 columnas, 1 fila)
+
+        # 2. Distribución de amplitudes (2x1 = 2 columnas, 1 fila)
         ax3 = fig.add_subplot(gs[2, 0:2])
         ax3.hist(results['amplitudes_original'], bins=50, alpha=0.7, 
                 color='green', edgecolor='black')
@@ -480,14 +471,6 @@ class MeteoriteMassAnalyzer:
         ax3.set_yscale('log')
         ax3.grid(True, alpha=0.3)
         
-        # 4. Residuos del ajuste (2x1 = 2 columnas, 1 fila)
-        ax4 = fig.add_subplot(gs[2, 2:4])
-        ax4.scatter(log_A, residuals, alpha=0.7, s=20, color='orange')
-        ax4.axhline(y=0, color='red', linestyle='--', alpha=0.8)
-        ax4.set_xlabel('log₁₀(Amplitud)')
-        ax4.set_ylabel('Residuos')
-        ax4.set_title('Residuos del Ajuste vs Amplitud')
-        ax4.grid(True, alpha=0.3)
         
         # Título general
         title = 'Análisis de Índice de Masa'
@@ -514,6 +497,7 @@ class MeteoriteMassAnalyzer:
             
         return fig
     
+
     def analyze_mass_index(self, file_type='csv', period='anual', min_amplitude=None, 
                           use_binning=False, n_bins=50, save_results=True, 
                           save_plots=True, file_name=None):

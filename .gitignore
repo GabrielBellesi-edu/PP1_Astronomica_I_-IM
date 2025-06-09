@@ -1,0 +1,13 @@
+# Ignorar carpetas de caché de Python
+__pycache__/
+
+# Ignorar archivos temporales
+*.tmp
+*.log
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Archivos de configuración personal
+*.code-workspace
+*.vscode/
