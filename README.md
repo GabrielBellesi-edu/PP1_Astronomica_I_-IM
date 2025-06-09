@@ -55,52 +55,63 @@ Repositorio del proyecto Astronomica I (IM), de la materia Practica Profesionali
 ## Project Organization
 
 ```
-├── LICENSE            <- EMPTY / Open-source license
-├── Makefile           <- TO DO / Makefile with convenience commands like `make data` or `make train`
-├── README.md          <- WIP / The top-level README for developers using this project.
+├── LICENSE                     <- EMPTY / Open-source license
+├── .gitattributes              <- NEW / Configuracion de archivos tratados con Git LFS
+├── .gitignore                  <- NEW / Ignora los archivos y carpetas seleccionadas
+├── Makefile                    <- EMPTY / Makefile with convenience commands like `make data` or `make train`
+├── README.md                   <- DOING / The top-level README for developers using this project.
 ├── data
-│   ├── external       <- EMPTY / Data from third party sources.
-│   ├── interim        <- WIP / Intermediate data that has been transformed.
-│   ├── processed      <- TO DO / The final, canonical data sets for modeling.
-│   └── raw            <- DONE / The original, immutable data dump.
+│   ├── external                <- EMPTY / Data from third party sources.
+│   ├── interim                 <- DONE / Intermediate data that has been transformed.
+│   ├── processed               <- DONE / The final, canonical data sets for modeling.
+│   └── raw                     <- DONE / The original, immutable data dump.
 │
-├── docs               <- CHECK / A default mkdocs project; see www.mkdocs.org for details
+├── docs                        <- EMPTY / A default mkdocs project; see www.mkdocs.org for details
 │
-├── models             <- EMPTY / Trained and serialized models, model predictions, or model summaries
+├── models                      <- EMPTY / Trained and serialized models, model predictions, or model summaries
 │
-├── notebooks          <- CHECK / Jupyter notebooks. Naming convention is a number (for ordering),
-│                         the creator's initials, and a short `-` delimited description, e.g.
-│                         `1.0-jqp-initial-data-exploration`.
+├── notebooks                   <- DOING / Jupyter notebooks. 
+│   ├── 1.0-PP1-IM-limpieza-dataset.ipynb   <- NEW / Notebook con limpieza del DataSet
+│   └── 2.0-PP1-IM-calculo-indice.ipynb     <- NEW / notebook con el calculo del indice de masa
 │
-├── pyproject.toml     <- CHECK / Project configuration file with package metadata for 
-│                         calculo and configuration for tools like black
+├── pyproject.toml              <- EMPTY / Project configuration file with package metadata for 
+│                               calculo and configuration for tools like black
 │
-├── references         <- TO DO / Data dictionaries, manuals, and all other explanatory materials.
+├── references                  <- DOING / Data dictionaries, manuals, and all other explanatory materials.
 │
-├── reports            <- TO DO / Generated analysis as HTML, PDF, LaTeX, etc.
-│   └── figures        <- TO DO / Generated graphics and figures to be used in reporting
 │
-├── requirements.txt   <- CHECK / The requirements file for reproducing the analysis environment, e.g.
-│                         generated with `pip freeze > requirements.txt`
+├── reports                     <- DOING / Generated analysis as HTML, PDF, LaTeX, etc.
+│   ├── CalculoDiario/          <- NEW / REPORTE DIARIO
+│   ├── CalculoSemanal/         <- NEW / REPORTE SEMANAL
+│   ├── CalculoMensual/         <- NEW / REPORTE MENSUAL
+│   ├── CalculoTrimestral/      <- NEW / REPORTE TRIMESTRAL
+│   ├── CalculoCuatrimestral/   <- NEW / REPORTE CUATRIMESTRAL
+│   ├── CalculoSemestral/       <- NEW / REPORTE SEMESTRAL
+│   ├── CalculoAnual/           <- NEW / REPORTE ANUAL
+│   └── 2024_consolidado_IM_temporalidades.csv  <- NEW / Resultados del calculo de indice de masa. 
+│                                                 Tabla 2 para PowerBi
 │
-├── setup.cfg          <- EMPTY / Configuration file for flake8
+├── requirements.txt            <- CHECK / The requirements file for reproducing the analysis environment, e.g.
+│                               generated with `pip freeze > requirements.txt`
 │
-└── calculo   <- DONE / Source code for use in this project.
+├── setup.cfg                   <- EMPTY / Configuration file for flake8
+│
+│
+└── src/                        <- NEW / ESPACIO PARA EL CODIGO
     │
-    ├── __init__.py             <- CHECK / Makes calculo a Python module
+    ├── calculo/                <- NEW / ESPACIO PARA EL CODIGO DEDICADO A LA LIMPIEZA DEL DATASET
+    │   ├── __init__.py         <- NEW / Makes calculo a Python module
+    │   ├── informe_indice_masa.py  <- NEW / Realiza los reportes temporales.TXT 
+    │   └── tabla_indice_masa.py    <- NEW / Realiza los calculos para el indice de masa
+    │                               Crea el archivo 2024_consolidado_IM_temporalidades.csv
     │
-    ├── config.py               <- CHECK / Store useful variables and configuration
-    │
-    ├── dataset.py              <- TO DO / Scripts to download or generate data
-    │
-    ├── features.py             <- EMPTY / Code to create features for modeling
-    │
-    ├── modeling                
-    │   ├── __init__.py         <- EMPTY / Makes modeling a Python module
-    │   ├── predict.py          <- EMPTY / Code to run model inference with trained models          
-    │   └── train.py            <- EMPTY / Code to train models
-    │
-    └── plots.py                <- TO DO / Code to create visualizations
+    └── limpieza/               <- NEW / ESPACIO PARA EL CODIGO DEDICADO AL CALCULO DEL IM
+        ├── __init__.py         <- NEW / Makes calculo a Python module
+        ├── data_cleaning.py    <- NEW / Ejecuta el programa para la conversion, limpieza y transformacion del DataSet
+        ├── filtrado_extras_rge_inferior.py   <- NEW / Programa adicional para filtrar resultados sobre el rango establecido
+        ├── filtrado_extras_rge_superior.py   <- NEW / Programa adicional para filtrar resultados debajo del rango establecido
+        └── solo_amax.py        <- NEW / Programa que elimina todos los datos del Dataset, salvo el valor de amax (optimizar rendimiento en etapa de testos)
+
 ```
 
 pip install --user git-filter-repo
