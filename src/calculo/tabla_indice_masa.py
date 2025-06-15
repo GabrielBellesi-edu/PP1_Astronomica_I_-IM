@@ -337,7 +337,7 @@ class AnalisisMasaMeteoritos:
             ('bimestral', 'bimestre'),
             ('mensual', 'mes'),
             ('semanal', 'semana'),
-            ('diario', None)
+            ('diario', 'dia')
         ]
         df = self.cargar_datos_csv(nombre_archivo)
         if df is None:
